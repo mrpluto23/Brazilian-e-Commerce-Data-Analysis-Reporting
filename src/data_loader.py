@@ -117,6 +117,12 @@ def load_table(table_name: str) -> int:
         return 0
 
     df = pd.read_csv(path)
+    # Add this immediately after the CSV is read into the 'df' variable:
+    df.rename(columns={
+    'product_name_lenght': 'product_name_length',
+    'product_description_lenght': 'product_description_length'
+    }, inplace=True)
+    
     df = df[columns]
 
     if table_name == "products":
@@ -131,6 +137,12 @@ def load_table(table_name: str) -> int:
     df = df[columns]  # enforce column order matching the SQL schema
 
     engine = get_engine()
+    
+    # Deduplicate review_id to prevent Primary Key violations
+    if 'review_id' in df.columns:
+        df.drop_duplicates(subset=['review_id'], inplace=True)
+
+
     df.to_sql(table_name, engine, if_exists="append", index=False, chunksize=5000)
     logger.info("Loaded %d rows into %s", len(df), table_name)
     return len(df)

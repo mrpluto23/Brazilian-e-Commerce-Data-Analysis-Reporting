@@ -9,7 +9,7 @@ import os
 import pandas as pd
 
 from config import RAW_DATA_DIR, DB_Config
-from db_connection import get_engine, run_sql_file, test_connection
+from db_connection import get_engine, run_query, run_sql_file, test_connection
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 logger = logging.getLogger(__name__)
@@ -82,7 +82,30 @@ LOAD_ORDER = [
     "product_category_translation", "customers", "sellers", "geolocation",
     "products", "orders", "order_items", "order_payments", "order_reviews",
 ]
-
+def backfill_missing_categories(df_products: pd.DataFrame) -> None:
+    """
+    olist_products_dataset.csv contains a few product_category_name values
+    (e.g. 'pc_gamer') that are missing from olist_category_name_translation.csv.
+    Insert those into product_category_translation using the original name as
+    a fallback English label, so the FK on products doesn't reject real rows.
+    """
+    engine = get_engine()
+    categories_in_products = set(df_products["product_category_name"].dropna().unique())
+    existing = set(run_query(
+        "SELECT product_category_name FROM product_category_translation"
+    )["product_category_name"])
+    missing = categories_in_products - existing
+    if missing:
+        logger.warning(
+            "%d category name(s) missing from the translation CSV (known Kaggle "
+            "dataset gap, e.g. 'pc_gamer'); backfilling with the original name as "
+            "a fallback English label: %s", len(missing), sorted(missing),
+        )
+        backfill_df = pd.DataFrame({
+            "product_category_name": sorted(missing),
+            "product_category_name_english": sorted(missing),
+        })
+        backfill_df.to_sql("product_category_translation", engine, if_exists="append", index=False)
 
 def load_table(table_name: str) -> int:
     filename, columns = TABLE_FILE_MAP[table_name]
@@ -94,8 +117,10 @@ def load_table(table_name: str) -> int:
         return 0
 
     df = pd.read_csv(path)
+    df = df[columns]
 
     if table_name == "products":
+        backfill_missing_categories(df)
         df = df.rename(columns=RAW_PRODUCTS_COLUMN_RENAME)
 
     # Parse date columns explicitly so they load as proper TIMESTAMP, not text

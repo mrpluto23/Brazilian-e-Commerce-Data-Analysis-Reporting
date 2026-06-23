@@ -22,8 +22,9 @@ def get_engine() -> Engine:
     """Return a singleton SQLAlchemy engine, creating it on first call."""
     global _engine
     if _engine is None:
-        logger.info("Creating SQLAlchemy engine for %s", DB_Config.name)
-        _engine = create_engine(DB_Config.sqlalchemy_url, pool_pre_ping=True)
+        cfg = DB_Config()
+        logger.info("Creating SQLAlchemy engine for %s", cfg.name)
+        _engine = create_engine(DB_Config().sqlalchemy_url, pool_pre_ping=True)
     return _engine
 
 
@@ -44,17 +45,21 @@ def run_query(sql: str, params: dict | None = None) -> pd.DataFrame:
     with engine.connect() as conn:
         return pd.read_sql(text(sql), conn, params=params)
 
-
 def run_sql_file(filepath: str) -> None:
     """
     Execute every statement in a .sql file against the database.
-    Splits on semicolons — adequate for this project's scripts, which
-    don't contain semicolons inside string literals or PL/pgSQL bodies.
+    Comment lines (starting with --) are stripped out before splitting
+    on semicolons, so a semicolon inside a comment can't be mistaken
+    for a statement separator.
     """
     with open(filepath, "r", encoding="utf-8") as f:
         raw_sql = f.read()
 
-    statements = [s.strip() for s in raw_sql.split(";") if s.strip() and not s.strip().startswith("--")]
+    code_only = "\n".join(
+        line for line in raw_sql.splitlines()
+        if not line.strip().startswith("--")
+    )
+    statements = [s.strip() for s in code_only.split(";") if s.strip()]
 
     engine = get_engine()
     with engine.begin() as conn:

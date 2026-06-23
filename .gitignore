@@ -1,0 +1,24 @@
+# Raw data — never commit the actual Kaggle CSVs (large, redistributable license concerns)
+data/raw/*.csv
+data/processed/*.csv
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+
+# Environment secrets
+.env
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS / editor
+.DS_Store
+.vscode/
+.idea/
+
+# Outputs (generated, not source — keep folder via .gitkeep, ignore contents)
+outputs/charts/*.png

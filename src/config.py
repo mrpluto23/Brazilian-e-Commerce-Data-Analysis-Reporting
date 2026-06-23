@@ -32,3 +32,4 @@ class DB_Config:
 RAW_DATA_DIR = "data/raw"
 PROCESSED_DATA_DIR = "data/processed"
 SQL_DIR = "sql/"
+OUTPUT_CHARTS_DIR = "outputs/charts"

@@ -117,7 +117,6 @@ def load_table(table_name: str) -> int:
         return 0
 
     df = pd.read_csv(path)
-    # Add this immediately after the CSV is read into the 'df' variable:
     df.rename(columns={
     'product_name_lenght': 'product_name_length',
     'product_description_lenght': 'product_description_length'
@@ -129,7 +128,6 @@ def load_table(table_name: str) -> int:
         backfill_missing_categories(df)
         df = df.rename(columns=RAW_PRODUCTS_COLUMN_RENAME)
 
-    # Parse date columns explicitly so they load as proper TIMESTAMP, not text
     for col in DATE_COLUMNS.get(table_name, []):
         if col in df.columns:
             df[col] = pd.to_datetime(df[col], errors="coerce")
@@ -138,7 +136,6 @@ def load_table(table_name: str) -> int:
 
     engine = get_engine()
     
-    # Deduplicate review_id to prevent Primary Key violations
     if 'review_id' in df.columns:
         df.drop_duplicates(subset=['review_id'], inplace=True)
 
